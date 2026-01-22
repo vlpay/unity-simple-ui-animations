@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f20e087228544e78baffd56432757796, type: 3}
+  m_Name: RulesScaleThenExpandAnimation
+  m_EditorClassIdentifier: Assembly-CSharp::ScaleThenExpandAnimation
+  <Duration>k__BackingField: 0.8
+  useCustomCurve: 0
+  <EaseType>k__BackingField: 27
+  <CustomCurve>k__BackingField:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  hasSeparateReverseSettings: 0
+  reverseDuration: 1
+  reverseEaseType: 11
+  reverseCustomCurve:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  _scaleFrom: 0
+  _scaleTo: 1
+  _expandSettings:
+    targetSize: {x: 980, y: 1900}
+    targetPosition: {x: 0, y: 0}
+    delay: 0.2
+    duration: 0.7
+    easeType: 27
+  _originalSize: {x: 600, y: 600}
+  _originalPosition: {x: 0, y: 0}
+  _pauseBetweenAnimations: 0

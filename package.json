@@ -1,0 +1,12 @@
+{
+  "name": "com.vlpay.animatedui",
+  "version": "1.0.0",
+  "displayName": "Animated UI",
+  "description": "A flexible animation system for Unity UI",
+  "unity": "6000.2.6f2",
+  "author": {
+    "name": "Vladislav Begachev",
+    "email": "vladbeg12201@gmail.com",
+    "url": "https://github.com/vlpay"
+  }
+}
