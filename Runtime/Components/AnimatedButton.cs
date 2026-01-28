@@ -85,10 +85,13 @@ namespace _Project.Dev.Scripts.AnimatedUI
             private set => _isInteractable = value;
         }
 
-        public event Action OnButtonPointerDown;
-        public event Action OnButtonPointerUp;
+        public event Action OnButtonDownPlayed;
+        public event Action OnButtonUpPlayed;
         public event Action OnButtonClick;
         public event Action<bool> OnInteractableStateChanged;
+
+        public event Action OnButtonAppeared;
+        public event Action OnButtonDisappeared;
 
         public void PlayAppearAnimation()
         {
@@ -107,6 +110,8 @@ namespace _Project.Dev.Scripts.AnimatedUI
                 transform.localScale = Vector3.zero;
                 _currentTween = transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack);
             }
+
+            OnButtonAppeared?.Invoke();
         }
 
         public void PlayDisappearAnimation()
@@ -120,6 +125,8 @@ namespace _Project.Dev.Scripts.AnimatedUI
             else
                 _currentTween = transform.DOScale(0f, 0.2f)
                     .SetEase(Ease.InBack);
+
+            OnButtonDisappeared?.Invoke();
         }
 
         public void SetButtonReference(Button button)
@@ -194,7 +201,6 @@ namespace _Project.Dev.Scripts.AnimatedUI
             if (!IsInteractable) return;
 
             PlayPressed();
-            OnButtonPointerDown?.Invoke();
 
             if (!animateRelease) return;
 
@@ -202,7 +208,7 @@ namespace _Project.Dev.Scripts.AnimatedUI
             DOVirtual.DelayedCall(delay, () =>
             {
                 PlayReleased();
-                OnButtonPointerUp?.Invoke();
+                OnButtonUpPlayed?.Invoke();
                 OnButtonClick?.Invoke();
             });
         }
@@ -232,7 +238,6 @@ namespace _Project.Dev.Scripts.AnimatedUI
             _pendingReleaseAnimation = false;
 
             PlayPressed();
-            OnButtonPointerDown?.Invoke();
         }
 
         public void OnPointerUp(PointerEventData eventData)
@@ -241,8 +246,6 @@ namespace _Project.Dev.Scripts.AnimatedUI
 
             _isPressed = false;
             var pressDuration = Time.unscaledTime - _pressStartTime;
-
-            OnButtonPointerUp?.Invoke();
 
             if (pressDuration < _pressThreshold)
             {
@@ -274,6 +277,8 @@ namespace _Project.Dev.Scripts.AnimatedUI
                 _currentTween = _animation.ApplyReverse(_visualRoot);
             else
                 _currentTween = _visualRoot.DOScale(0.9f, 0.1f);
+
+            OnButtonDownPlayed?.Invoke();
         }
 
         private void PlayReleased()
@@ -286,6 +291,8 @@ namespace _Project.Dev.Scripts.AnimatedUI
                 _currentTween = _animation.ApplyTo(_visualRoot);
             else
                 _currentTween = _visualRoot.DOScale(1f, 0.1f);
+
+            OnButtonUpPlayed?.Invoke();
         }
 
         private void ExecutePendingReleaseAnimation()
