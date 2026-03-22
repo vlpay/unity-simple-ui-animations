@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d30e59f701807824ba0d522064309a5a, type: 3}
   m_Name: ButtonPressScaleAnimation
   m_EditorClassIdentifier: Assembly-CSharp::ScaleAnimationConfig
-  <Duration>k__BackingField: 0.3
+  <Duration>k__BackingField: 0.2
   useCustomCurve: 0
   <EaseType>k__BackingField: 27
   <CustomCurve>k__BackingField:
@@ -32,4 +32,3 @@ MonoBehaviour:
     m_RotationOrder: 4
   scaleFrom: {x: 0.7, y: 0.6, z: 0.7}
   scaleTo: {x: 1, y: 1, z: 1}
-  useCurrentAsTarget: 1
