@@ -32,4 +32,3 @@ MonoBehaviour:
     m_RotationOrder: 4
   scaleFrom: {x: 0.7, y: 0.6, z: 0.7}
   scaleTo: {x: 1, y: 1, z: 1}
-  useCurrentAsTarget: 1
