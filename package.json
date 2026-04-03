@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "displayName": "Animated UI",
   "description": "A flexible animation system for Unity UI",
-  "unity": "6000.2.6f2",
+  "unity": "6000.2",
   "author": {
     "name": "Vladislav Begachev",
     "email": "vladbeg12201@gmail.com",
