@@ -63,12 +63,14 @@ namespace _Project.Dev.Scripts.AnimatedUI
         #region Private Fields
 
         private Tween _currentTween;
+        private Tween _appearDisappearTween;
         private Tween _stateTween;
         private bool _isPressed;
         private bool _isInteractable = true;
         private CanvasGroup _visualCanvasGroup;
         private float _pressStartTime;
         private bool _pendingReleaseAnimation;
+        private bool _isAppearingOrDisappearing;
 
         #endregion
 
@@ -95,38 +97,49 @@ namespace _Project.Dev.Scripts.AnimatedUI
 
         public void PlayAppearAnimation()
         {
-            KillTween();
+            KillAppearDisappearTween();
+            _isAppearingOrDisappearing = true;
 
             if (_appearAnimation != null)
             {
-                _currentTween = _appearAnimation.ApplyTo(transform);
+                _appearDisappearTween = _appearAnimation.ApplyTo(transform);
             }
             else if (_animation != null)
             {
-                _currentTween = _animation.ApplyTo(transform);
+                _appearDisappearTween = _animation.ApplyTo(transform);
             }
             else
             {
                 transform.localScale = Vector3.zero;
-                _currentTween = transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack);
+                _appearDisappearTween = transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack);
             }
 
-            OnButtonAppeared?.Invoke();
+            _appearDisappearTween.OnComplete(() =>
+            {
+                _isAppearingOrDisappearing = false;
+                OnButtonAppeared?.Invoke();
+            });
         }
 
         public void PlayDisappearAnimation()
         {
+            KillAppearDisappearTween();
+            _isAppearingOrDisappearing = true;
             KillTween();
 
             if (_appearAnimation != null)
-                _currentTween = _appearAnimation.ApplyReverse(transform);
+                _appearDisappearTween = _appearAnimation.ApplyReverse(transform);
             else if (_animation != null)
-                _currentTween = _animation.ApplyReverse(transform);
+                _appearDisappearTween = _animation.ApplyReverse(transform);
             else
-                _currentTween = transform.DOScale(0f, 0.2f)
+                _appearDisappearTween = transform.DOScale(0f, 0.2f)
                     .SetEase(Ease.InBack);
 
-            OnButtonDisappeared?.Invoke();
+            _appearDisappearTween.OnComplete(() =>
+            {
+                _isAppearingOrDisappearing = false;
+                OnButtonDisappeared?.Invoke();
+            });
         }
 
         public void SetButtonReference(Button button)
@@ -164,13 +177,21 @@ namespace _Project.Dev.Scripts.AnimatedUI
                 if (_visualCanvasGroup != null) _visualCanvasGroup.alpha = interactable ? 1f : _disabledAlpha;
             }
 
-            if (!interactable) ForceReset();
+            if (!interactable)
+            {
+                _pendingReleaseAnimation = false;
+                if (!_isAppearingOrDisappearing)
+                {
+                    ForceResetVisual();
+                }
+            }
 
             OnInteractableStateChanged?.Invoke(interactable);
         }
 
         public void HideImmediate()
         {
+            KillAppearDisappearTween();
             KillTween();
             _isPressed = false;
             _pendingReleaseAnimation = false;
@@ -180,6 +201,7 @@ namespace _Project.Dev.Scripts.AnimatedUI
 
         public void ShowImmediate()
         {
+            KillAppearDisappearTween();
             KillTween();
             _isPressed = false;
             _pendingReleaseAnimation = false;
@@ -189,11 +211,28 @@ namespace _Project.Dev.Scripts.AnimatedUI
 
         public void ForceReset()
         {
+            KillAppearDisappearTween();
             KillTween();
             _isPressed = false;
             _pendingReleaseAnimation = false;
 
             if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+        }
+
+        public void ForceResetVisual()
+        {
+            KillTween();
+            _isPressed = false;
+            _pendingReleaseAnimation = false;
+
+            if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+        }
+
+        public void ResetToDefaultState()
+        {
+            if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+            _isPressed = false;
+            _pendingReleaseAnimation = false;
         }
 
         public void SimulatePress(bool animateRelease = true, float delay = 0.1f)
@@ -270,6 +309,7 @@ namespace _Project.Dev.Scripts.AnimatedUI
 
         private void PlayPressed()
         {
+            if (_isAppearingOrDisappearing) return;
             KillTween();
             _pendingReleaseAnimation = false;
 
@@ -283,7 +323,7 @@ namespace _Project.Dev.Scripts.AnimatedUI
 
         private void PlayReleased()
         {
-            if (_pendingReleaseAnimation) return;
+            if (_pendingReleaseAnimation || _isAppearingOrDisappearing) return;
 
             KillTween();
 
@@ -307,6 +347,12 @@ namespace _Project.Dev.Scripts.AnimatedUI
         {
             if (_currentTween?.IsActive() == true)
                 _currentTween.Kill();
+        }
+
+        private void KillAppearDisappearTween()
+        {
+            if (_appearDisappearTween?.IsActive() == true)
+                _appearDisappearTween.Kill();
         }
 
         private void KillStateTween()
@@ -364,6 +410,7 @@ namespace _Project.Dev.Scripts.AnimatedUI
         private void OnDestroy()
         {
             KillTween();
+            KillAppearDisappearTween();
             KillStateTween();
         }
 
