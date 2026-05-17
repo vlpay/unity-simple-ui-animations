@@ -120,12 +120,12 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
             return;
 
         _lastInterruptionTime = Time.unscaledTime;
-        _isVisible = true;
 
         StopCurrentAnimationSafe();
         EnsureGameObjectActive();
 
         _isAnimating = true;
+        OnShowStarted?.Invoke();
 
         Tween tween = CreateTweenForAnimation(true);
 
@@ -140,7 +140,6 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
                 })
                 .OnKill(() =>
                 {
-                    // Проверяем, что это тот же твин, который мы запустили
                     if (_currentTween == tween)
                     {
                         _isAnimating = false;
@@ -161,21 +160,19 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
     [Button(ButtonSizes.Medium), GUIColor(0.8f, 0.4f, 0.4f)]
     public void Hide()
     {
-        // Проверяем частоту прерываний
         if (Time.unscaledTime - _lastInterruptionTime < _interruptionDelay)
             return;
 
-        // Если анимация уже выполняется в нужном направлении, ничего не делаем
         if (_isAnimating && !_isVisible)
             return;
 
         _lastInterruptionTime = Time.unscaledTime;
-        _isVisible = false;
 
         StopCurrentAnimationSafe();
         if (!gameObject.activeSelf) return;
 
         _isAnimating = true;
+        OnHideStarted?.Invoke();
 
         Tween tween = CreateTweenForAnimation(false);
 
@@ -192,7 +189,6 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
                 })
                 .OnKill(() =>
                 {
-                    // Проверяем, что это тот же твин, который мы запустили
                     if (_currentTween == tween)
                     {
                         if (gameObject.activeSelf)
@@ -219,6 +215,7 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
         EnsureGameObjectActive();
         _isAnimating = false;
         _isVisible = true;
+        OnShowStarted?.Invoke();
         OnShowComplete?.Invoke();
     }
 
@@ -232,12 +229,12 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
             gameObject.SetActive(false);
         _isAnimating = false;
         _isVisible = false;
+        OnHideStarted?.Invoke();
         OnHideComplete?.Invoke();
     }
 
     private Tween CreateTweenForAnimation(bool isForward)
     {
-        // Сначала убиваем все твины на целевом объекте
         KillTweensOnTarget();
 
         switch (_targetType)
@@ -323,7 +320,9 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
     }
 
     // Events for external listeners
+    public event Action OnShowStarted;
     public event Action OnShowComplete;
+    public event Action OnHideStarted;
     public event Action OnHideComplete;
 
     private void StopCurrentAnimationSafe()
@@ -335,7 +334,6 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
         {
             if (_currentTween != null && _currentTween.IsActive())
             {
-                // Используем Complete() вместо Kill() для плавного завершения
                 _currentTween.Complete();
                 _currentTween = null;
             }
@@ -353,7 +351,6 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
 
     private void KillTweensOnTarget()
     {
-        // Убиваем все твины на целевом объекте
         switch (_targetType)
         {
             case AnimationTargetType.Transform:
@@ -402,10 +399,10 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
     public bool IsAnimating => _isAnimating;
     public AnimationTargetType TargetType => _targetType;
 
-    #region Быстрые методы управления
+    #region Helper methods for interruption
 
     /// <summary>
-    /// Показывает окно с возможностью прерывания текущей анимации
+    /// Shows window with interruption if allowed
     /// </summary>
     public void ShowWithInterruption()
     {
@@ -414,7 +411,7 @@ public class AnimatedWindow : MonoBehaviour, IDisposable
     }
 
     /// <summary>
-    /// Скрывает окно с возможностью прерывания текущей анимации
+    /// Hides window with interruption if allowed
     /// </summary>
     public void HideWithInterruption()
     {
