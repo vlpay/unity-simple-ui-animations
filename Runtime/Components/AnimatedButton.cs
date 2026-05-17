@@ -5,75 +5,49 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using VContainer;
 
 namespace _Project.Dev.Scripts.AnimatedUI
 {
-    public sealed class AnimatedButton :
-        MonoBehaviour,
-        IAnimatedButton,
-        IPointerDownHandler,
-        IPointerUpHandler,
-        IPointerClickHandler
+    public sealed class AnimatedButton : MonoBehaviour, IAnimatedButton, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
     {
         #region Serialized Fields
-
-        [Title("Animation")] [SerializeField] [InlineEditor] [Tooltip("Main button animation")]
-        private UIAnimation<Transform> _animation;
+        [Title("Animation")]
+        [SerializeField, InlineEditor] private UIAnimation<Transform> _animation;
 
         [Title("References")]
-        [SerializeField]
-        [Required]
-        [Tooltip("Root transform for visual elements")]
-        [ValidateInput(nameof(IsValidVisual), "VisualRoot must be child with Image (Raycast Target = false)")]
-        private Transform _visualRoot;
+        [SerializeField, Required] private Transform _visualRoot;
+        [SerializeField] private Button _button;
 
-        [SerializeField] [Tooltip("Optional Button component reference")]
-        private Button _button;
+        [Title("State Settings")]
+        [SerializeField] private bool _syncWithButton = true;
 
-        [Title("State Settings")] [SerializeField] [Tooltip("Sync interactable state with Button component")]
-        private bool _syncWithButton = true;
-
-        [Title("Interactive State Animation")] [SerializeField] [Tooltip("Animate interactable state changes")]
-        private bool _animateStateChange = true;
-
-        [SerializeField] [ShowIf(nameof(_animateStateChange))] [Range(0.1f, 1f)] [Tooltip("Alpha when disabled")]
-        private float _disabledAlpha = 0.5f;
-
-        [SerializeField] [ShowIf(nameof(_animateStateChange))] [Range(0.1f, 1f)] [Tooltip("State transition duration")]
-        private float _stateTransitionDuration = 0.2f;
+        [Title("Interactive State Animation")]
+        [SerializeField] private bool _animateStateChange = true;
+        [SerializeField, ShowIf(nameof(_animateStateChange)), Range(0.1f, 1f)] private float _disabledAlpha = 0.5f;
+        [SerializeField, ShowIf(nameof(_animateStateChange)), Range(0.1f, 1f)] private float _stateTransitionDuration = 0.2f;
 
         [Title("Appear/Disappear Animation")]
-        [SerializeField]
-        [InlineEditor]
-        [Tooltip("Specific appear/disappear animation")]
-        private UIAnimation<Transform> _appearAnimation;
+        [SerializeField, InlineEditor] private UIAnimation<Transform> _appearAnimation;
 
         [Title("Threshold Settings")]
-        [SerializeField]
-        [Range(0.01f, 1f)]
-        [Tooltip("Minimum press duration for release animation")]
-        private float _pressThreshold = 0.1f;
-
-        [SerializeField] [Range(0.01f, 1f)] [Tooltip("Time to wait for release animation after quick press")]
-        private float _releaseAnimationDelay = 0.1f;
-
+        [SerializeField, Range(0.01f, 1f)] private float _pressThreshold = 0.1f;
+        [SerializeField, Range(0.01f, 1f)] private float _releaseAnimationDelay = 0.1f;
         #endregion
 
         #region Private Fields
-
         private Tween _currentTween;
+        private Tween _appearDisappearTween;
         private Tween _stateTween;
         private bool _isPressed;
         private bool _isInteractable = true;
         private CanvasGroup _visualCanvasGroup;
         private float _pressStartTime;
         private bool _pendingReleaseAnimation;
-
+        private bool _isAppearingOrDisappearing;
+        private Image _visualImage;
         #endregion
 
-        #region IAnimatedButton Implementation
-
+        #region Properties
         public bool IsInteractable
         {
             get
@@ -84,42 +58,74 @@ namespace _Project.Dev.Scripts.AnimatedUI
             }
             private set => _isInteractable = value;
         }
+        #endregion
 
-        public event Action OnButtonPointerDown;
-        public event Action OnButtonPointerUp;
+        #region Events
+        public event Action OnButtonDownPlayed;
+        public event Action OnButtonUpPlayed;
         public event Action OnButtonClick;
         public event Action<bool> OnInteractableStateChanged;
+        public event Action OnButtonAppeared;
+        public event Action OnButtonDisappeared;
+        #endregion
 
+        #region Public Methods
         public void PlayAppearAnimation()
         {
-            KillTween();
+            KillAppearDisappearTween();
+            _isAppearingOrDisappearing = true;
+            SetRaycastTarget(true);
+
+            var target = _visualRoot != null ? _visualRoot : transform;
 
             if (_appearAnimation != null)
             {
-                _currentTween = _appearAnimation.ApplyTo(transform);
+                _appearDisappearTween = _appearAnimation.ApplyTo(target);
             }
             else if (_animation != null)
             {
-                _currentTween = _animation.ApplyTo(transform);
+                _appearDisappearTween = _animation.ApplyTo(target);
             }
             else
             {
-                transform.localScale = Vector3.zero;
-                _currentTween = transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack);
+                target.localScale = Vector3.zero;
+                _appearDisappearTween = target.DOScale(1f, 0.3f).SetEase(Ease.OutBack);
             }
+
+            _appearDisappearTween.OnComplete(() =>
+            {
+                _isAppearingOrDisappearing = false;
+                OnButtonAppeared?.Invoke();
+            });
         }
 
         public void PlayDisappearAnimation()
         {
+            KillAppearDisappearTween();
+            _isAppearingOrDisappearing = true;
             KillTween();
 
+            var target = _visualRoot != null ? _visualRoot : transform;
+
             if (_appearAnimation != null)
-                _currentTween = _appearAnimation.ApplyReverse(transform);
+            {
+                _appearDisappearTween = _appearAnimation.ApplyReverse(target);
+            }
             else if (_animation != null)
-                _currentTween = _animation.ApplyReverse(transform);
+            {
+                _appearDisappearTween = _animation.ApplyReverse(target);
+            }
             else
-                _currentTween = transform.DOScale(0f, 0.2f)
-                    .SetEase(Ease.InBack);
+            {
+                _appearDisappearTween = target.DOScale(0f, 0.2f).SetEase(Ease.InBack);
+            }
+
+            _appearDisappearTween.OnComplete(() =>
+            {
+                _isAppearingOrDisappearing = false;
+                SetRaycastTarget(false);
+                OnButtonDisappeared?.Invoke();
+            });
         }
 
         public void SetButtonReference(Button button)
@@ -157,36 +163,69 @@ namespace _Project.Dev.Scripts.AnimatedUI
                 if (_visualCanvasGroup != null) _visualCanvasGroup.alpha = interactable ? 1f : _disabledAlpha;
             }
 
-            if (!interactable) ForceReset();
-
             OnInteractableStateChanged?.Invoke(interactable);
         }
 
         public void HideImmediate()
         {
+            KillAppearDisappearTween();
             KillTween();
             _isPressed = false;
             _pendingReleaseAnimation = false;
+            _isAppearingOrDisappearing = false;
 
-            if (_visualRoot != null) _visualRoot.localScale = Vector3.zero;
+            var target = _visualRoot != null ? _visualRoot : transform;
+            target.localScale = Vector3.zero;
+            SetRaycastTarget(false);
         }
 
         public void ShowImmediate()
         {
+            KillAppearDisappearTween();
             KillTween();
             _isPressed = false;
             _pendingReleaseAnimation = false;
+            _isAppearingOrDisappearing = false;
 
-            if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+            var target = _visualRoot != null ? _visualRoot : transform;
+            target.localScale = Vector3.one;
+            SetRaycastTarget(true);
         }
 
         public void ForceReset()
+        {
+            KillAppearDisappearTween();
+            KillTween();
+            _isPressed = false;
+            _pendingReleaseAnimation = false;
+            _isAppearingOrDisappearing = false;
+
+            var target = _visualRoot != null ? _visualRoot : transform;
+            target.localScale = Vector3.one;
+            SetRaycastTarget(true);
+        }
+
+        public void ForceResetVisual()
         {
             KillTween();
             _isPressed = false;
             _pendingReleaseAnimation = false;
 
-            if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+            if (_visualRoot != null && !_isAppearingOrDisappearing)
+            {
+                _visualRoot.DOKill();
+                _visualRoot.localScale = Vector3.one;
+                SetRaycastTarget(true);
+            }
+        }
+
+        public void ResetToDefaultState()
+        {
+            var target = _visualRoot != null ? _visualRoot : transform;
+            target.localScale = Vector3.one;
+            _isPressed = false;
+            _pendingReleaseAnimation = false;
+            SetRaycastTarget(true);
         }
 
         public void SimulatePress(bool animateRelease = true, float delay = 0.1f)
@@ -194,7 +233,6 @@ namespace _Project.Dev.Scripts.AnimatedUI
             if (!IsInteractable) return;
 
             PlayPressed();
-            OnButtonPointerDown?.Invoke();
 
             if (!animateRelease) return;
 
@@ -202,7 +240,7 @@ namespace _Project.Dev.Scripts.AnimatedUI
             DOVirtual.DelayedCall(delay, () =>
             {
                 PlayReleased();
-                OnButtonPointerUp?.Invoke();
+                OnButtonUpPlayed?.Invoke();
                 OnButtonClick?.Invoke();
             });
         }
@@ -218,21 +256,19 @@ namespace _Project.Dev.Scripts.AnimatedUI
             this.DOKill();
             DOVirtual.DelayedCall(delay, PlayReleased);
         }
-
         #endregion
 
         #region Input Handlers
-
         public void OnPointerDown(PointerEventData eventData)
         {
             if (!IsInteractable) return;
+            if (_visualRoot != null && _visualRoot.localScale == Vector3.zero) return;
 
             _isPressed = true;
             _pressStartTime = Time.unscaledTime;
             _pendingReleaseAnimation = false;
 
             PlayPressed();
-            OnButtonPointerDown?.Invoke();
         }
 
         public void OnPointerUp(PointerEventData eventData)
@@ -241,8 +277,6 @@ namespace _Project.Dev.Scripts.AnimatedUI
 
             _isPressed = false;
             var pressDuration = Time.unscaledTime - _pressStartTime;
-
-            OnButtonPointerUp?.Invoke();
 
             if (pressDuration < _pressThreshold)
             {
@@ -258,34 +292,42 @@ namespace _Project.Dev.Scripts.AnimatedUI
         public void OnPointerClick(PointerEventData eventData)
         {
             if (!IsInteractable) return;
+            if (_visualRoot != null && _visualRoot.localScale == Vector3.zero) return;
             OnButtonClick?.Invoke();
         }
-
         #endregion
 
         #region Animation Methods
-
         private void PlayPressed()
         {
+            if (_isAppearingOrDisappearing) return;
             KillTween();
             _pendingReleaseAnimation = false;
 
+            var target = _visualRoot != null ? _visualRoot : transform;
+
             if (_animation != null)
-                _currentTween = _animation.ApplyReverse(_visualRoot);
+                _currentTween = _animation.ApplyReverse(target);
             else
-                _currentTween = _visualRoot.DOScale(0.9f, 0.1f);
+                _currentTween = target.DOScale(0.9f, 0.1f);
+
+            OnButtonDownPlayed?.Invoke();
         }
 
         private void PlayReleased()
         {
-            if (_pendingReleaseAnimation) return;
+            if (_pendingReleaseAnimation || _isAppearingOrDisappearing) return;
 
             KillTween();
 
+            var target = _visualRoot != null ? _visualRoot : transform;
+
             if (_animation != null)
-                _currentTween = _animation.ApplyTo(_visualRoot);
+                _currentTween = _animation.ApplyTo(target);
             else
-                _currentTween = _visualRoot.DOScale(1f, 0.1f);
+                _currentTween = target.DOScale(1f, 0.1f);
+
+            OnButtonUpPlayed?.Invoke();
         }
 
         private void ExecutePendingReleaseAnimation()
@@ -300,6 +342,12 @@ namespace _Project.Dev.Scripts.AnimatedUI
         {
             if (_currentTween?.IsActive() == true)
                 _currentTween.Kill();
+        }
+
+        private void KillAppearDisappearTween()
+        {
+            if (_appearDisappearTween?.IsActive() == true)
+                _appearDisappearTween.Kill();
         }
 
         private void KillStateTween()
@@ -317,13 +365,28 @@ namespace _Project.Dev.Scripts.AnimatedUI
             }
         }
 
+        private void SetRaycastTarget(bool enabled)
+        {
+            if (_visualImage == null && _visualRoot != null)
+            {
+                _visualImage = _visualRoot.GetComponent<Image>();
+            }
+            if (_visualImage != null)
+            {
+                _visualImage.raycastTarget = enabled;
+            }
+        }
         #endregion
 
-        #region Lifecycle
-
+        #region Unity Lifecycle
         private void Awake()
         {
             SetupButtonComponent();
+
+            if (_visualRoot != null)
+            {
+                _visualImage = _visualRoot.GetComponent<Image>();
+            }
 
             if (_animateStateChange)
             {
@@ -357,37 +420,27 @@ namespace _Project.Dev.Scripts.AnimatedUI
         private void OnDestroy()
         {
             KillTween();
+            KillAppearDisappearTween();
             KillStateTween();
         }
-
         #endregion
 
         #region Validation
-
         private bool IsValidVisual(Transform visual)
         {
-            if (visual == null)
-                return false;
-
-            if (visual == transform)
-                return false;
-
-            if (!visual.IsChildOf(transform))
-                return false;
+            if (visual == null) return false;
+            if (visual == transform) return false;
+            if (!visual.IsChildOf(transform)) return false;
 
             var image = visual.GetComponent<Image>();
-            if (image == null)
-                return false;
+            if (image == null) return false;
 
-            return !image.raycastTarget;
+            return true;
         }
-
         #endregion
 
-#if UNITY_EDITOR
-
         #region Editor
-
+#if UNITY_EDITOR
         [Button(ButtonSizes.Medium)]
         [GUIColor(0.4f, 0.8f, 1f)]
         private void SetupButton()
@@ -435,26 +488,20 @@ namespace _Project.Dev.Scripts.AnimatedUI
         [GUIColor(0.4f, 0.8f, 1f)]
         private void FindVisual()
         {
-            if (_visualRoot != null)
-                return;
+            if (_visualRoot != null) return;
 
             var images = GetComponentsInChildren<Image>(true);
 
             foreach (var img in images)
             {
-                if (img.transform == transform)
-                    continue;
-
-                if (img.raycastTarget) continue;
+                if (img.transform == transform) continue;
                 Undo.RecordObject(this, "Assign Visual Root");
                 _visualRoot = img.transform;
                 EditorUtility.SetDirty(this);
                 return;
             }
 
-            Debug.LogError(
-                $"{name}: No child Image with Raycast Target = false found",
-                this);
+            Debug.LogError($"{name}: No child Image found", this);
         }
 
         [Button(ButtonSizes.Medium)]
@@ -490,9 +537,7 @@ namespace _Project.Dev.Scripts.AnimatedUI
             SetInteractable(!IsInteractable);
             EditorUtility.SetDirty(this);
         }
-
-        #endregion
-
 #endif
+        #endregion
     }
 }

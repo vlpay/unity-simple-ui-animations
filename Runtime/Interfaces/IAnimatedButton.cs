@@ -8,8 +8,8 @@ namespace _Project.Dev.Scripts.AnimatedUI
     {
         bool IsInteractable { get; }
 
-        event Action OnButtonPointerDown;
-        event Action OnButtonPointerUp;
+        event Action OnButtonDownPlayed;
+        event Action OnButtonUpPlayed;
         event Action OnButtonClick;
         event Action<bool> OnInteractableStateChanged;
 

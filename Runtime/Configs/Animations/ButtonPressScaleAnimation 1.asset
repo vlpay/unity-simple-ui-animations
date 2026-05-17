@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d30e59f701807824ba0d522064309a5a, type: 3}
-  m_Name: ButtonPressScaleAnimation
+  m_Name: ButtonPressScaleAnimation 1
   m_EditorClassIdentifier: Assembly-CSharp::ScaleAnimationConfig
-  <Duration>k__BackingField: 0.25
+  <Duration>k__BackingField: 0.2
   useCustomCurve: 0
   <EaseType>k__BackingField: 27
   <CustomCurve>k__BackingField:
@@ -30,5 +30,5 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  scaleFrom: {x: 0.8, y: 0.7, z: 0.8}
+  scaleFrom: {x: 0.7, y: 0.7, z: 0.7}
   scaleTo: {x: 1, y: 1, z: 1}
